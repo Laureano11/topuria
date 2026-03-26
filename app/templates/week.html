@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2 style="margin-top: 0;">{{ period_title }}</h2>
+  <div style="margin-bottom: 12px;">
+    <a class="btn" href="/week?date={{ prev_week_date }}">← Semana anterior</a>
+    <a class="btn" href="/week?date={{ next_week_date }}" style="margin-left: 8px;">Semana siguiente →</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Hábito</th>
+        <th>Objetivo</th>
+        {% for d in days %}
+          <th style="min-width: 68px;">{{ d.strftime("%a") }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% if habits|length == 0 %}
+        <tr>
+          <td colspan="{{ 2 + days|length }}" class="muted">Todavía no hay hábitos. Agregá el primero en la vista de Día.</td>
+        </tr>
+      {% else %}
+        {% for habit in habits %}
+          <tr>
+            <td>{{ habit.name }}</td>
+            <td class="muted">{{ habit.goal or "" }}</td>
+            {% for d in days %}
+              {% set habit_id = habit.id %}
+              {% set date_str = d.isoformat() %}
+              {% set checked = completed_map.get(habit.id, {}).get(date_str, False) %}
+              <td id="cell-{{ habit.id }}-{{ d.isoformat() }}">
+                {% include "partials/check_button.html" %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      {% endif %}
+    </tbody>
+  </table>
+{% endblock %}
+
