@@ -20,9 +20,19 @@ def today_local() -> date:
     return datetime.now(tz=local_tz()).date()
 
 
+def now_local_naive() -> datetime:
+    # Guardamos timestamps sin tzinfo para que SQLite no tenga que interpretar zonas.
+    return datetime.now(tz=local_tz()).replace(tzinfo=None)
+
+
 def parse_date_yyyy_mm_dd(s: str) -> date:
     # Espera "YYYY-MM-DD"
     return date.fromisoformat(s)
+
+
+def parse_iso_datetime(s: str) -> datetime:
+    # Acepta "YYYY-MM-DDTHH:MM:SS" (sin tzinfo) o similar.
+    return datetime.fromisoformat(s)
 
 
 def iso_week_start(d: date) -> date:

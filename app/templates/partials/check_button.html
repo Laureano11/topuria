@@ -1,12 +1,18 @@
-{% set cell_id = "cell-" ~ habit_id ~ "-" ~ date_str %}
+{% set check_id = "check-" ~ habit_id ~ "-" ~ date_str %}
 {% set completed_on_click = 0 if checked else 1 %}
-{% set label = "✔" if checked else "✚" %}
+{% set checked_class = "checked" if checked else "unchecked" %}
+
+{% if habit_kind == "avoid" %}
+  {% set label = "✖" if checked else "◯" %}
+{% else %}
+  {% set label = "✔" if checked else "✚" %}
+{% endif %}
 
 <button
-  class="btn"
+  class="check-btn {{ checked_class }} {{ habit_kind }}"
   type="button"
   hx-post="/checks/set"
-  hx-target="#{{ cell_id }}"
+  hx-target="#{{ check_id }}"
   hx-swap="innerHTML"
   hx-vals='{"habit_id": {{ habit_id }}, "date": "{{ date_str }}", "completed": {{ completed_on_click }} }'
 >

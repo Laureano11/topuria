@@ -10,6 +10,12 @@ class Habit(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     goal: Optional[str] = Field(default=None)
+    # Ej: Dinero, Salud, Fitness, Desarrollo personal, Adicciones, Estudio
+    category: str = Field(default="General", index=True)
+    # Ej: daily/weekly/monthly/yearly (UI soporta semanal/mensual/anual)
+    cadence: str = Field(default="daily", index=True)
+    # positive => marca "logrado"; avoid => marca "falló" (racha desde última marca)
+    habit_kind: str = Field(default="positive", index=True)
     active: bool = Field(default=True, index=True)
 
 
@@ -18,5 +24,8 @@ class HabitCheck(SQLModel, table=True):
     check_date: date = Field(primary_key=True)
 
     completed: bool = Field(default=False, index=True)
+    # Guardamos el timestamp en texto para poder mostrar días/horas/minutos desde la última marca.
+    # Formato: ISO 8601 sin zona horaria (ej: "2026-03-26T21:08:34").
+    check_at: Optional[str] = Field(default=None)
     notes: Optional[str] = Field(default=None)
 

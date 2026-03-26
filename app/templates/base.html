@@ -4,33 +4,25 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ title or "topuria" }}</title>
-    <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
-      nav a { margin-right: 12px; }
-      table { border-collapse: collapse; width: 100%; }
-      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-      .muted { color: #666; }
-      .btn { cursor: pointer; padding: 6px 10px; border: 1px solid #ddd; background: #fafafa; }
-      .btn:hover { background: #f0f0f0; }
-    </style>
+    <link rel="stylesheet" href="/static/styles.css" />
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   </head>
   <body>
-    <header>
-      <h1 style="margin: 0 0 8px 0;">topuria</h1>
-      <div class="muted" style="margin-bottom: 16px;">
-        <nav>
+    <div class="container">
+      <header>
+        <h1>topuria</h1>
+        <nav class="nav">
           <a href="/day">Día</a>
           <a href="/week">Semana</a>
           <a href="/month">Mes</a>
           <a href="/year">Año</a>
         </nav>
-      </div>
-    </header>
+      </header>
 
-    <main>
-      {% block content %}{% endblock %}
-    </main>
+      <main>
+        {% block content %}{% endblock %}
+      </main>
+    </div>
   </body>
 </html>
 

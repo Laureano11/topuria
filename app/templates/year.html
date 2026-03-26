@@ -7,34 +7,42 @@
     <a class="btn" href="/year?year={{ next_year }}" style="margin-left: 8px;">Año siguiente →</a>
   </div>
 
-  {% if habits|length == 0 %}
-    <div class="muted">Todavía no hay hábitos.</div>
-  {% else %}
-    <table>
-      <thead>
-        <tr>
-          <th>Hábito</th>
-          <th>Objetivo</th>
-          {% for mm in range(1,13) %}
-            <th style="min-width: 52px;">{{ mm }}</th>
-          {% endfor %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for habit in habits %}
-          <tr>
-            <td>{{ habit.name }}</td>
-            <td class="muted">{{ habit.goal or "" }}</td>
+  <div class="cards">
+    {% if habits|length == 0 %}
+      <div class="card">
+        <div class="card-title">Todavía no hay hábitos</div>
+        <div class="card-goal muted">Agregá hábitos en “Día”.</div>
+      </div>
+    {% else %}
+      {% for habit in habits %}
+        <div class="card">
+          <div class="card-title">{{ habit.name }}</div>
+          {% if habit.goal %}
+            <div class="card-goal">{{ habit.goal }}</div>
+          {% else %}
+            <div class="card-goal muted">Sin objetivo</div>
+          {% endif %}
+
+          <div class="card-goal muted" style="margin-bottom: 0; margin-top: 6px;">
+            {{ habit.category }} • {% if habit.cadence == "weekly" %}Semanal{% elif habit.cadence == "monthly" %}Mensual{% elif habit.cadence == "yearly" %}Anual{% else %}Diario{% endif %}
+          </div>
+
+          {% if habit.cadence == "yearly" and habit.habit_kind == "positive" %}
+            {% set total_done = completed_count_by_habit_id.get(habit.id, 0) %}
+            <div class="card-goal muted" style="margin-top: 10px;">
+              Año: {{ total_done }}/{{ days_in_year }}{% if total_done >= days_in_year %} • Cumplido{% endif %}
+            </div>
+          {% endif %}
+
+          <div class="month-chips" aria-label="meses del año">
             {% for mm in range(1,13) %}
               {% set count = completed_counts.get(habit.id, {}).get(mm, 0) %}
-              <td style="text-align:center;">
-                <a href="/month?year={{ year }}&month={{ mm }}" title="Abrir mes">{{ count }}</a>
-              </td>
+              <a class="chip" href="/month?year={{ year }}&month={{ mm }}" title="Abrir mes {{ mm }}">{{ count }}</a>
             {% endfor %}
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
 {% endblock %}
 
