@@ -20,6 +20,11 @@ from app.models import Habit, HabitCheck, HabitEvent
 router = APIRouter(prefix="/habits")
 
 
+def normalize_habit_kind(value: str | None) -> str:
+    allowed = {"positive", "negative", "avoid"}
+    return value if value in allowed else "positive"
+
+
 @router.get("/create")
 def create_habit_get() -> RedirectResponse:
     return RedirectResponse(url="/", status_code=303)
@@ -41,9 +46,12 @@ def create_habit(
     if not cleaned_name:
         return RedirectResponse(url=redirect_target(redirect_tab_name), status_code=303)
 
+    normalized_kind = normalize_habit_kind(habit_kind)
     normalized_cadence = normalize_cadence(cadence)
-    if habit_kind == "avoid":
+    if normalized_kind == "avoid":
         normalized_cadence = "streak"
+    elif normalized_kind == "negative":
+        normalized_cadence = "daily"
 
     started_at, started_text = parse_started_at_text(started_at_text)
     habit = Habit(
@@ -51,7 +59,7 @@ def create_habit(
         goal=goal.strip() if goal and goal.strip() else None,
         category=normalize_category(category),
         cadence=normalized_cadence,
-        habit_kind="avoid" if habit_kind == "avoid" else "positive",
+        habit_kind=normalized_kind,
         target_count=target_count or default_target_for_cadence(normalized_cadence),
         started_at=started_at,
         started_at_text=started_text,
@@ -96,6 +104,9 @@ def update_habit(
             habit.started_at = started_at
             habit.started_at_text = started_text
         habit.target_count = target_count or habit.target_count or default_target_for_cadence("streak")
+    elif habit.habit_kind == "negative":
+        habit.cadence = "daily"
+        habit.target_count = 1
     else:
         habit.cadence = normalize_cadence(cadence)
         habit.target_count = target_count or default_target_for_cadence(habit.cadence)

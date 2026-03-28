@@ -166,9 +166,11 @@ def build_dashboard_context(session: Session, active_tab: str = "weekly") -> dic
     for event in events:
         events_by_habit[event.habit_id].append(event)
 
-    positive_habits = [habit for habit in habits if habit.habit_kind != "avoid"]
+    positive_habits = [habit for habit in habits if habit.habit_kind == "positive"]
+    negative_habits = [habit for habit in habits if habit.habit_kind == "negative"]
     streak_habits = [habit for habit in habits if habit.habit_kind == "avoid"]
     daily_habits = [habit for habit in positive_habits if habit.cadence == "daily"]
+    negative_daily_habits = [habit for habit in negative_habits if habit.cadence == "daily"]
     panel_habits = {
         cadence: [habit for habit in positive_habits if habit.cadence == cadence]
         for cadence in TAB_LABELS
@@ -177,6 +179,12 @@ def build_dashboard_context(session: Session, active_tab: str = "weekly") -> dic
     daily_rows = [
         _build_daily_habit_row(habit, events_by_habit.get(habit.id, []), today)
         for habit in daily_habits
+        if habit.id is not None
+    ]
+
+    negative_daily_rows = [
+        _build_negative_daily_habit_row(habit, events_by_habit.get(habit.id, []), today)
+        for habit in negative_daily_habits
         if habit.id is not None
     ]
 
@@ -195,9 +203,9 @@ def build_dashboard_context(session: Session, active_tab: str = "weekly") -> dic
         for cadence in TAB_LABELS
     }
 
-    character = _build_character(habits, events_by_habit, streak_rows)
-    category_progress = _build_category_progress(positive_habits, events_by_habit, today)
-    stats = _build_stats(positive_habits, events_by_habit, today)
+    character = _build_character(habits, events_by_habit, streak_rows, today)
+    category_progress = _build_category_progress(habits, events_by_habit, today)
+    stats = _build_stats(habits, events_by_habit, today)
     quotes = FALLBACK_QUOTES
     quote_index = today.toordinal() % len(quotes)
     quote_text, quote_author = quotes[quote_index]
@@ -218,6 +226,7 @@ def build_dashboard_context(session: Session, active_tab: str = "weekly") -> dic
         "tab_labels": TAB_LABELS,
         "stats": stats,
         "daily_habits": daily_rows,
+        "negative_daily_habits": negative_daily_rows,
         "streaks": streak_rows,
         "panel_habits": panel_rows,
         "annual_goals": panel_rows["yearly"],
@@ -343,6 +352,22 @@ def _build_daily_habit_row(habit: Habit, habit_events: list[HabitEvent], today: 
     }
 
 
+def _build_negative_daily_habit_row(habit: Habit, habit_events: list[HabitEvent], today: date) -> dict:
+    failed_today = any(
+        event.event_type == "failure" and event.occurred_on == today for event in habit_events
+    )
+    return {
+        "id": habit.id,
+        "name": habit.name,
+        "goal": habit.goal,
+        "category_label": category_label(habit.category),
+        "category_slug": category_slug(habit.category),
+        "failed_today": failed_today,
+        "safe_today": not failed_today,
+        "cadence_label": cadence_human_label(habit.cadence),
+    }
+
+
 def _build_multi_habit_row(habit: Habit, habit_events: list[HabitEvent], today: date) -> dict:
     start, end = _period_bounds(habit.cadence, today)
     count = sum(
@@ -434,8 +459,22 @@ def _build_stats(habits: list[Habit], events_by_habit: dict[int, list[HabitEvent
             if habit.habit_kind == "avoid" or habit.cadence not in cadences or habit.id is None:
                 continue
 
-            target = habit.target_count or default_target_for_cadence(habit.cadence)
             habit_events = events_by_habit.get(habit.id, [])
+
+            if habit.habit_kind == "negative":
+                if habit.cadence != "daily":
+                    continue
+                total_days = (end - start).days + 1
+                failure_days = {
+                    event.occurred_on
+                    for event in habit_events
+                    if event.event_type == "failure" and start <= event.occurred_on <= end
+                }
+                numerator += max(0, total_days - len(failure_days))
+                denominator += total_days
+                continue
+
+            target = habit.target_count or default_target_for_cadence(habit.cadence)
             numerator += sum(
                 1
                 for event in habit_events
@@ -496,6 +535,16 @@ def _build_category_progress(
             continue
 
         slug = category_slug(habit.category)
+        if habit.habit_kind == "negative":
+            totals[slug]["target"] += elapsed_month_days
+            failure_days = {
+                event.occurred_on
+                for event in events_by_habit.get(habit.id, [])
+                if event.event_type == "failure" and month_start <= event.occurred_on <= today
+            }
+            totals[slug]["done"] += max(0, elapsed_month_days - len(failure_days))
+            continue
+
         target = habit.target_count or default_target_for_cadence(habit.cadence)
         if habit.cadence == "daily":
             totals[slug]["target"] += elapsed_month_days
@@ -529,6 +578,7 @@ def _build_character(
     habits: list[Habit],
     events_by_habit: dict[int, list[HabitEvent]],
     streak_rows: list[dict],
+    today: date,
 ) -> dict:
     total_xp = 0
     category_xp = {slug: 0 for slug in CATEGORY_META}
@@ -537,10 +587,20 @@ def _build_character(
             continue
         weight = CADENCE_WEIGHTS.get(habit.cadence, 10)
         slug = category_slug(habit.category)
-        completions = sum(
-            1 for event in events_by_habit.get(habit.id, []) if event.event_type == "completion"
-        )
-        gained = completions * weight
+        if habit.habit_kind == "negative":
+            month_start = today.replace(day=1)
+            elapsed_days = today.day
+            failure_days = {
+                event.occurred_on
+                for event in events_by_habit.get(habit.id, [])
+                if event.event_type == "failure" and month_start <= event.occurred_on <= today
+            }
+            gained = max(0, elapsed_days - len(failure_days)) * weight
+        else:
+            completions = sum(
+                1 for event in events_by_habit.get(habit.id, []) if event.event_type == "completion"
+            )
+            gained = completions * weight
         category_xp[slug] += gained
         total_xp += gained
 
@@ -571,7 +631,7 @@ def _build_character(
     available_today = sum(
         CADENCE_WEIGHTS.get(habit.cadence, 10)
         for habit in habits
-        if habit.habit_kind != "avoid" and habit.cadence == "daily"
+        if habit.habit_kind in {"positive", "negative"} and habit.cadence == "daily"
     )
 
     return {

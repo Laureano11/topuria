@@ -14,7 +14,7 @@ class Habit(SQLModel, table=True):
     category: str = Field(default="General", index=True)
     # Ej: daily/weekly/monthly/yearly (UI soporta semanal/mensual/anual)
     cadence: str = Field(default="daily", index=True)
-    # positive => marca "logrado"; avoid => marca "falló" (racha desde última marca)
+    # positive => marca "logrado"; negative => marca una recaída; avoid => marca "falló" para racha
     habit_kind: str = Field(default="positive", index=True)
     active: bool = Field(default=True, index=True)
     # Fecha desde la que se empieza a trackear (para hábitos históricos)

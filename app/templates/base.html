@@ -347,8 +347,6 @@
     max-width: 30ch;
   }
 
-    border-radius: 2px;
-  }
   .stat-item {
     padding: 18px 16px;
     border-right: 1px solid var(--border);
@@ -392,6 +390,13 @@
   .habit-row:last-child { border-bottom: none; }
   .habit-row:hover { background: var(--bg2); }
   .habit-row.done { opacity: 0.5; }
+  .habit-row.inverse-safe {
+    border-left: 2px solid rgba(69, 196, 124, 0.55);
+  }
+  .habit-row.inverse-failed {
+    border-left: 2px solid rgba(255, 135, 95, 0.8);
+    background: rgba(255, 135, 95, 0.08);
+  }
 
   .habit-main {
     display: flex;
@@ -451,9 +456,37 @@
     font-size: 13px;
     color: var(--text);
   }
+  .habit-goal {
+    margin-top: 3px;
+    font-size: 10px;
+    color: var(--text3);
+  }
   .habit-row.done .habit-name {
     text-decoration: line-through;
     color: var(--text3);
+  }
+
+  .inverse-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--text2);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .inverse-pill.safe {
+    color: var(--accent2);
+    border-color: rgba(69, 196, 124, 0.35);
+    background: rgba(69, 196, 124, 0.12);
+  }
+  .inverse-pill.failed {
+    color: #ffc0ab;
+    border-color: rgba(255, 135, 95, 0.4);
+    background: rgba(255, 135, 95, 0.14);
   }
 
   .habit-cat {
@@ -1097,6 +1130,109 @@
         </details>
       </div>
 
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Hábitos a evitar</div>
+          <div class="card-meta">marcar = recaída, no hacerlo = suma</div>
+        </div>
+        <div class="habits-list panel-scroll">
+          {% if negative_daily_habits %}
+            {% for habit in negative_daily_habits %}
+            <div class="habit-row {% if habit.failed_today %}inverse-failed{% else %}inverse-safe{% endif %}">
+              <div class="habit-main">
+                <div class="habit-check">
+                  <form method="post" action="/checks/daily-toggle" data-submit-state>
+                    <input type="hidden" name="habit_id" value="{{ habit.id }}">
+                    <input type="hidden" name="redirect_tab_name" value="weekly">
+                    <button type="submit" aria-label="Marcar recaída">{% if habit.failed_today %}↺{% else %}!{% endif %}</button>
+                  </form>
+                </div>
+                <div>
+                  <div class="habit-name">{{ habit.name }}</div>
+                  <div class="habit-goal">{% if habit.goal %}{{ habit.goal }}{% else %}Si no lo marcás, el día cuenta a favor.{% endif %}</div>
+                </div>
+              </div>
+              <div class="habit-side">
+                <div class="inverse-pill {% if habit.failed_today %}failed{% else %}safe{% endif %}">{% if habit.failed_today %}hubo recaída hoy{% else %}limpio hoy{% endif %}</div>
+                <div class="habit-cat cat-{{ habit.category_slug }}">{{ habit.category_label|lower }}</div>
+                <details>
+                  <summary class="ghost-btn">Editar</summary>
+                  <div class="details-edit">
+                    <form method="post" action="/habits/{{ habit.id }}/update">
+                      <div class="form-grid">
+                        <div class="field">
+                          <label>Nombre</label>
+                          <input type="text" name="name" value="{{ habit.name }}" required>
+                        </div>
+                        <div class="field">
+                          <label>Categoría</label>
+                          <select name="category">
+                            <option value="Salud" {% if habit.category_label == 'Salud' %}selected{% endif %}>Salud</option>
+                            <option value="Dinero" {% if habit.category_label == 'Dinero' %}selected{% endif %}>Dinero</option>
+                            <option value="Estudio" {% if habit.category_label == 'Estudio' %}selected{% endif %}>Estudio</option>
+                            <option value="Trabajo" {% if habit.category_label == 'Trabajo' %}selected{% endif %}>Trabajo</option>
+                          </select>
+                        </div>
+                        <div class="field" style="grid-column:1 / -1;">
+                          <label>Nota u objetivo</label>
+                          <input type="text" name="goal" value="{{ habit.goal or '' }}" placeholder="Opcional">
+                        </div>
+                      </div>
+                      <input type="hidden" name="cadence" value="daily">
+                      <input type="hidden" name="redirect_tab_name" value="weekly">
+                      <div class="form-actions">
+                        <button class="primary-btn" type="submit">Guardar</button>
+                      </div>
+                    </form>
+                    <form method="post" action="/habits/{{ habit.id }}/delete">
+                      <input type="hidden" name="redirect_tab_name" value="weekly">
+                      <div class="form-actions">
+                        <button class="ghost-btn danger-btn" type="submit">Eliminar hábito</button>
+                      </div>
+                    </form>
+                  </div>
+                </details>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">No agregaste hábitos a evitar todavía.</div>
+          {% endif %}
+        </div>
+        <details class="composer">
+          <summary><span class="add-btn">+ nuevo hábito a evitar</span></summary>
+          <div class="composer-body">
+            <form method="post" action="/habits/create" data-submit-state>
+              <div class="form-grid">
+                <div class="field">
+                  <label>Nombre</label>
+                  <input type="text" name="name" required placeholder="Ej. Pornografía, apuestas o comida chatarra">
+                </div>
+                <div class="field">
+                  <label>Categoría</label>
+                  <select name="category">
+                    <option value="Salud">Salud</option>
+                    <option value="Dinero">Dinero</option>
+                    <option value="Estudio">Estudio</option>
+                    <option value="Trabajo">Trabajo</option>
+                  </select>
+                </div>
+                <div class="field" style="grid-column:1 / -1;">
+                  <label>Nota u objetivo</label>
+                  <input type="text" name="goal" placeholder="Opcional">
+                </div>
+              </div>
+              <input type="hidden" name="habit_kind" value="negative">
+              <input type="hidden" name="cadence" value="daily">
+              <input type="hidden" name="redirect_tab_name" value="weekly">
+              <div class="form-actions">
+                <button class="primary-btn" type="submit">Agregar hábito inverso</button>
+              </div>
+            </form>
+          </div>
+        </details>
+      </div>
+
       <!-- RACHAS -->
       <div class="card">
         <div class="card-header">
@@ -1427,12 +1563,8 @@
 </div>
 
 <script>
-  const quoteEntries = [
-    {% for entry in quote_entries %}
-    { text: {{ entry.text|tojson }}, author: {{ entry.author|tojson }} }{% if not loop.last %},{% endif %}
-    {% endfor %}
-  ];
-  let quoteIndex = {{ quote_index }};
+  const quoteEntries = {{ quote_entries | tojson }};
+  let quoteIndex = {{ quote_index | tojson }};
 
   document.querySelectorAll('form[data-submit-state]').forEach((form) => {
     form.addEventListener('submit', () => {

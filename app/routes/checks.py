@@ -19,12 +19,17 @@ def daily_toggle(
     redirect_tab_name: str = Form("weekly"),
     session: Session = Depends(get_session),
 ):
+    habit = session.get(Habit, habit_id)
+    if habit is None:
+        return RedirectResponse(url=redirect_target(redirect_tab_name), status_code=303)
+
     today = today_local()
+    event_type = "failure" if habit.habit_kind == "negative" else "completion"
     existing = session.exec(
         select(HabitEvent).where(
             HabitEvent.habit_id == habit_id,
             HabitEvent.occurred_on == today,
-            HabitEvent.event_type == "completion",
+            HabitEvent.event_type == event_type,
         )
     ).all()
 
@@ -38,7 +43,7 @@ def daily_toggle(
                 habit_id=habit_id,
                 occurred_on=today,
                 occurred_at=now.isoformat(timespec="seconds"),
-                event_type="completion",
+                event_type=event_type,
             )
         )
 
