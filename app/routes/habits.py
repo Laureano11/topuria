@@ -6,102 +6,117 @@ from fastapi import APIRouter, Depends, Form
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, delete
 
+from app.dashboard import (
+    default_target_for_cadence,
+    normalize_cadence,
+    normalize_category,
+    parse_started_at_text,
+    redirect_target,
+)
 from app.db import get_session
-from app.models import Habit, HabitCheck
+from app.models import Habit, HabitCheck, HabitEvent
 
 
-router = APIRouter()
+router = APIRouter(prefix="/habits")
 
 
-@router.get("/habits/create")
+@router.get("/create")
 def create_habit_get() -> RedirectResponse:
-    # Algunos navegadores/controles pueden intentar precargar con GET.
-    # El flujo correcto es POST desde el formulario.
-    return RedirectResponse(url="/day")
+    return RedirectResponse(url="/", status_code=303)
 
 
-@router.post("/habits/create")
+@router.post("/create")
 def create_habit(
     name: str = Form(...),
     goal: Optional[str] = Form(None),
-    category: str = Form("General"),
+    category: str = Form("Salud"),
     cadence: str = Form("daily"),
     habit_kind: str = Form("positive"),
-    date: Optional[str] = Form(None),
+    target_count: Optional[int] = Form(None),
+    started_at_text: Optional[str] = Form(None),
+    redirect_tab_name: str = Form("weekly"),
     session: Session = Depends(get_session),
 ):
-    # Nota: por simplicidad usamos un create inmediato.
-    # Más adelante podemos añadir validación/normalización.
-    cleaned = name.strip()
-    if not cleaned:
-        # Volvemos a la vista sin romper el flujo.
-        return RedirectResponse(url="/day")
+    cleaned_name = name.strip()
+    if not cleaned_name:
+        return RedirectResponse(url=redirect_target(redirect_tab_name), status_code=303)
 
+    normalized_cadence = normalize_cadence(cadence)
+    if habit_kind == "avoid":
+        normalized_cadence = "streak"
+
+    started_at, started_text = parse_started_at_text(started_at_text)
     habit = Habit(
-        name=cleaned,
-        goal=goal,
-        category=category,
-        cadence=cadence,
-        habit_kind=habit_kind,
+        name=cleaned_name,
+        goal=goal.strip() if goal and goal.strip() else None,
+        category=normalize_category(category),
+        cadence=normalized_cadence,
+        habit_kind="avoid" if habit_kind == "avoid" else "positive",
+        target_count=target_count or default_target_for_cadence(normalized_cadence),
+        started_at=started_at,
+        started_at_text=started_text,
         active=True,
     )
     session.add(habit)
     session.commit()
-
-    target = "/day"
-    if date:
-        target = f"/day?date={date}"
-    return RedirectResponse(url=target)
+    return RedirectResponse(url=redirect_target(redirect_tab_name), status_code=303)
 
 
-@router.get("/habits/{habit_id}/update")
+@router.get("/{habit_id}/update")
 def update_habit_get(habit_id: int) -> RedirectResponse:
-    # Evita 405 si alguien intenta hacer GET a la URL del formulario de update.
-    return RedirectResponse(url="/day")
+    return RedirectResponse(url="/", status_code=303)
 
 
-@router.post("/habits/{habit_id}/update")
+@router.post("/{habit_id}/update")
 def update_habit(
     habit_id: int,
     name: str = Form(...),
     goal: Optional[str] = Form(None),
-    category: str = Form("General"),
+    category: str = Form("Salud"),
     cadence: str = Form("daily"),
-    habit_kind: str = Form("positive"),
-    date: Optional[str] = Form(None),
+    target_count: Optional[int] = Form(None),
+    started_at_text: Optional[str] = Form(None),
+    redirect_tab_name: str = Form("weekly"),
     session: Session = Depends(get_session),
 ):
-    cleaned = name.strip()
     habit = session.get(Habit, habit_id)
-    if not habit:
-        return RedirectResponse(url="/day")
+    if habit is None:
+        return RedirectResponse(url=redirect_target(redirect_tab_name), status_code=303)
 
-    habit.name = cleaned
-    habit.goal = goal
-    habit.category = category
-    habit.cadence = cadence
-    habit.habit_kind = habit_kind
+    cleaned_name = name.strip()
+    if cleaned_name:
+        habit.name = cleaned_name
+    habit.goal = goal.strip() if goal and goal.strip() else None
+    habit.category = normalize_category(category)
+
+    if habit.habit_kind == "avoid":
+        habit.cadence = "streak"
+        started_at, started_text = parse_started_at_text(started_at_text)
+        if started_at is not None and started_text is not None:
+            habit.started_at = started_at
+            habit.started_at_text = started_text
+        habit.target_count = target_count or habit.target_count or default_target_for_cadence("streak")
+    else:
+        habit.cadence = normalize_cadence(cadence)
+        habit.target_count = target_count or default_target_for_cadence(habit.cadence)
+
     session.add(habit)
     session.commit()
-
-    target = "/day"
-    if date:
-        target = f"/day?date={date}"
-    return RedirectResponse(url=target)
+    return RedirectResponse(url=redirect_target(redirect_tab_name), status_code=303)
 
 
-@router.post("/habits/{habit_id}/delete")
+@router.post("/{habit_id}/delete")
 def delete_habit(
     habit_id: int,
+    redirect_tab_name: str = Form("weekly"),
     session: Session = Depends(get_session),
 ):
     habit = session.get(Habit, habit_id)
-    if not habit:
-        return RedirectResponse(url="/day")
+    if habit is None:
+        return RedirectResponse(url=redirect_target(redirect_tab_name), status_code=303)
 
-    # Limpieza explícita (sin cascade en el modelo).
+    session.exec(delete(HabitEvent).where(HabitEvent.habit_id == habit_id))
     session.exec(delete(HabitCheck).where(HabitCheck.habit_id == habit_id))
     session.delete(habit)
     session.commit()
-    return RedirectResponse(url="/day")
-
+    return RedirectResponse(url=redirect_target(redirect_tab_name), status_code=303)

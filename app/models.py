@@ -17,6 +17,12 @@ class Habit(SQLModel, table=True):
     # positive => marca "logrado"; avoid => marca "falló" (racha desde última marca)
     habit_kind: str = Field(default="positive", index=True)
     active: bool = Field(default=True, index=True)
+    # Fecha desde la que se empieza a trackear (para hábitos históricos)
+    started_at: Optional[date] = Field(default=None)
+    # Timestamp ISO de inicio, útil para rachas con horas y minutos.
+    started_at_text: Optional[str] = Field(default=None)
+    # Objetivo numérico para hábitos de conteo (ej: 12 libros al año)
+    target_count: Optional[int] = Field(default=None)
 
 
 class HabitCheck(SQLModel, table=True):
@@ -28,4 +34,12 @@ class HabitCheck(SQLModel, table=True):
     # Formato: ISO 8601 sin zona horaria (ej: "2026-03-26T21:08:34").
     check_at: Optional[str] = Field(default=None)
     notes: Optional[str] = Field(default=None)
+
+
+class HabitEvent(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    habit_id: int = Field(foreign_key="habit.id", index=True)
+    occurred_on: date = Field(index=True)
+    occurred_at: str = Field(index=True)
+    event_type: str = Field(default="completion", index=True)
 

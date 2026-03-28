@@ -1,64 +1,91 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Form
+from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 
+from app.dashboard import redirect_target
+from app.dates import now_local_naive, today_local
 from app.db import get_session
-from app.models import HabitCheck
-from app.dates import now_local_naive, parse_date_yyyy_mm_dd
+from app.models import Habit, HabitEvent
 
 
-router = APIRouter()
+router = APIRouter(prefix="/checks")
 
 
-@router.post("/checks/set")
-def set_check(
-    request: Request,
+@router.post("/daily-toggle")
+def daily_toggle(
     habit_id: int = Form(...),
-    date: str = Form(...),
-    completed: int = Form(...),
+    redirect_tab_name: str = Form("weekly"),
     session: Session = Depends(get_session),
 ):
-    # Nota: `completed` llega como 0/1 desde hx-vals.
-    check_date = parse_date_yyyy_mm_dd(date)
-    completed_bool = completed == 1
-
-    templates = request.app.state.templates
-
+    today = today_local()
     existing = session.exec(
-        select(HabitCheck).where(
-            HabitCheck.habit_id == habit_id, HabitCheck.check_date == check_date
+        select(HabitEvent).where(
+            HabitEvent.habit_id == habit_id,
+            HabitEvent.occurred_on == today,
+            HabitEvent.event_type == "completion",
         )
-    ).one_or_none()
+    ).all()
 
-    if existing is None:
-        existing = HabitCheck(
-            habit_id=habit_id,
-            check_date=check_date,
-            completed=completed_bool,
-            check_at=now_local_naive().isoformat(sep="T") if completed_bool else None,
-        )
+    if existing:
+        for event in existing:
+            session.delete(event)
     else:
-        existing.completed = completed_bool
-        existing.check_at = now_local_naive().isoformat(sep="T") if completed_bool else None
+        now = now_local_naive()
+        session.add(
+            HabitEvent(
+                habit_id=habit_id,
+                occurred_on=today,
+                occurred_at=now.isoformat(timespec="seconds"),
+                event_type="completion",
+            )
+        )
 
-    if completed_bool and not existing.check_at:
-        existing.check_at = now_local_naive().isoformat(sep="T")
-    if not completed_bool:
-        existing.check_at = None
-
-    session.add(existing)
     session.commit()
+    return RedirectResponse(url=redirect_target(redirect_tab_name), status_code=303)
 
-    return templates.TemplateResponse(
-        "partials/check_button.html",
-        {
-            "request": request,
-            "habit_id": habit_id,
-            "date_str": check_date.isoformat(),
-            "checked": completed_bool,
-        },
-        media_type="text/html",
+
+@router.post("/increment")
+def increment_habit(
+    habit_id: int = Form(...),
+    redirect_tab_name: str = Form("weekly"),
+    session: Session = Depends(get_session),
+):
+    now = now_local_naive()
+    session.add(
+        HabitEvent(
+            habit_id=habit_id,
+            occurred_on=now.date(),
+            occurred_at=now.isoformat(timespec="seconds"),
+            event_type="completion",
+        )
     )
+    session.commit()
+    return RedirectResponse(url=redirect_target(redirect_tab_name), status_code=303)
 
+
+@router.post("/streak-reset")
+def reset_streak(
+    habit_id: int = Form(...),
+    redirect_tab_name: str = Form("weekly"),
+    session: Session = Depends(get_session),
+):
+    habit = session.get(Habit, habit_id)
+    if habit is None:
+        return RedirectResponse(url=redirect_target(redirect_tab_name), status_code=303)
+
+    now = now_local_naive()
+    session.add(
+        HabitEvent(
+            habit_id=habit_id,
+            occurred_on=now.date(),
+            occurred_at=now.isoformat(timespec="seconds"),
+            event_type="failure",
+        )
+    )
+    habit.started_at = now.date()
+    habit.started_at_text = now.isoformat(timespec="seconds")
+    session.add(habit)
+    session.commit()
+    return RedirectResponse(url=redirect_target(redirect_tab_name), status_code=303)

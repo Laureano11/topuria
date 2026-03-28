@@ -1,28 +1,1484 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ title or "topuria" }}</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
-  <body>
-    <div class="container">
-      <header>
-        <h1>topuria</h1>
-        <nav class="nav">
-          <a href="/day">Día</a>
-          <a href="/week">Semana</a>
-          <a href="/month">Mes</a>
-          <a href="/year">Año</a>
-        </nav>
-      </header>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topuria</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b1118;
+    --bg2: #121a23;
+    --surface: #151f2b;
+    --surface-2: #0f1720;
+    --border: #243243;
+    --text: #eef3f8;
+    --text2: #a9b6c5;
+    --text3: #718096;
+    --accent: #45c47c;
+    --accent2: #6fe39f;
+    --accent-light: rgba(69, 196, 124, 0.16);
+    --salud: #45c47c;
+    --dinero: #d7a65a;
+    --estudio: #67a7ff;
+    --trabajo: #b48cff;
+    --salud-bg: rgba(69, 196, 124, 0.14);
+    --dinero-bg: rgba(215, 166, 90, 0.14);
+    --estudio-bg: rgba(103, 167, 255, 0.14);
+    --trabajo-bg: rgba(180, 140, 255, 0.14);
+    --racha: #ff875f;
+    --racha-bg: rgba(255, 135, 95, 0.14);
+  }
 
-      <main>
-        {% block content %}{% endblock %}
-      </main>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 13px;
+    background-image: radial-gradient(circle at top left, rgba(69, 196, 124, 0.12), transparent 24%), radial-gradient(circle at top right, rgba(103, 167, 255, 0.12), transparent 18%), linear-gradient(180deg, #0b1118 0%, #0f1720 100%);
+  }
+
+  /* ─── QUOTE BANNER ─── */
+  .quote-banner {
+    background: #060b11;
+    color: var(--text);
+    padding: 18px 56px;
+    text-align: center;
+    font-family: 'DM Serif Display', serif;
+    font-style: italic;
+    font-size: 15px;
+    letter-spacing: 0.01em;
+    position: relative;
+  }
+  .quote-banner::after {
+    content: '';
+    display: block;
+    font-family: 'Inter', sans-serif;
+    font-style: normal;
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 4px;
+    letter-spacing: 0.08em;
+  }
+  .quote-author {
+    font-family: 'Inter', sans-serif;
+    font-style: normal;
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 4px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .quote-actions {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 8px;
+  }
+
+  .quote-btn {
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text2);
+    padding: 6px 10px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+
+  .quote-btn:hover {
+    color: var(--text);
+    border-color: var(--text2);
+  }
+
+  /* ─── LAYOUT ─── */
+  .app {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 36px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .header-left .date {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 6px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ─── CHARACTER ─── */
+  .character-section {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .char-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+  .char-label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .char-bar-wrap {
+    width: 44px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .char-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s ease;
+  }
+  .char-bar.salud { background: var(--salud); width: 68%; }
+  .char-bar.dinero { background: var(--dinero); width: 45%; }
+  .char-bar.estudio { background: var(--estudio); width: 80%; }
+  .char-bar.trabajo { background: var(--trabajo); width: 55%; }
+  .char-figure {
+    font-size: 26px;
+    line-height: 1;
+    filter: grayscale(20%);
+  }
+  .char-level {
+    font-size: 10px;
+    color: var(--text2);
+  }
+
+  /* ─── GRID ─── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .left-col { display: flex; flex-direction: column; gap: 20px; }
+  .right-col { display: flex; flex-direction: column; gap: 20px; }
+
+  /* ─── CARD ─── */
+  .card {
+    background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card-title {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--text2);
+  }
+  .card-meta {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.06em;
+  }
+
+  /* ─── STATS ROW ─── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+
+  .year-progress {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 20px;
+    padding: 18px;
+    background:
+      radial-gradient(circle at top right, rgba(103, 167, 255, 0.08), transparent 30%),
+      radial-gradient(circle at bottom left, rgba(69, 196, 124, 0.08), transparent 28%),
+      linear-gradient(180deg, rgba(21, 31, 43, 0.96) 0%, rgba(15, 23, 32, 0.98) 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  }
+
+  .year-progress-block {
+    position: relative;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: hidden;
+  }
+
+  .year-progress-block::after {
+    content: '';
+    position: absolute;
+    inset: auto -30px -30px auto;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.03);
+    pointer-events: none;
+  }
+
+  .year-progress-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .year-progress-kicker {
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+
+  .year-progress-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .year-progress-chip {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--text2);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    white-space: nowrap;
+  }
+
+  .year-progress-value {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 34px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .year-progress-value span {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: var(--text3);
+    letter-spacing: 0.04em;
+  }
+
+  .year-progress-track {
+    width: 100%;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .year-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--estudio));
+    box-shadow: 0 0 18px rgba(103, 167, 255, 0.25);
+  }
+
+  .year-progress-fill.week {
+    background: linear-gradient(90deg, #67a7ff, #b48cff);
+  }
+
+  .year-progress-fill.day {
+    background: linear-gradient(90deg, #45c47c, #67a7ff);
+  }
+
+  .year-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    color: var(--text3);
+  }
+
+  .year-progress-sub {
+    font-size: 10px;
+    color: var(--text2);
+    max-width: 30ch;
+  }
+
+    border-radius: 2px;
+  }
+  .stat-item {
+    padding: 18px 16px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .stat-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    line-height: 1;
+    color: var(--text);
+  }
+  .stat-sub {
+    font-size: 10px;
+    color: var(--text3);
+  }
+  .stat-ring {
+    width: 36px;
+    height: 36px;
+    margin-top: 6px;
+  }
+
+  /* ─── HABIT LIST ─── */
+  .habits-list { padding: 4px 0; }
+  .habit-row {
+    display: flex;
+    align-items: center;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--bg2);
+    gap: 12px;
+    transition: background 0.15s;
+  }
+  .habit-row:last-child { border-bottom: none; }
+  .habit-row:hover { background: var(--bg2); }
+  .habit-row.done { opacity: 0.5; }
+
+  .habit-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .habit-side,
+  .habit-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .habit-check {
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    background: transparent;
+    color: transparent;
+    font-size: 11px;
+  }
+  .habit-check button {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+  }
+  .habit-check form { width: 100%; height: 100%; }
+  .habit-row:not(.done) .habit-check {
+    color: var(--text3);
+  }
+  .habit-row:not(.done) .habit-check:hover {
+    border-color: var(--text2);
+    color: var(--text2);
+  }
+  .habit-row.done .habit-check {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  .habit-name {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .habit-row.done .habit-name {
+    text-decoration: line-through;
+    color: var(--text3);
+  }
+
+  .habit-cat {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+  .cat-salud { color: var(--salud); background: var(--salud-bg); }
+  .cat-dinero { color: var(--dinero); background: var(--dinero-bg); }
+  .cat-estudio { color: var(--estudio); background: var(--estudio-bg); }
+  .cat-trabajo { color: var(--trabajo); background: var(--trabajo-bg); }
+
+  .habit-freq {
+    font-size: 9px;
+    color: var(--text3);
+    letter-spacing: 0.06em;
+    min-width: 34px;
+    text-align: right;
+  }
+
+  /* ─── TABS ─── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 18px;
+    background: var(--surface);
+  }
+  .tab {
+    padding: 12px 14px 11px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text2); }
+  .tab.active {
+    color: var(--text);
+    border-bottom-color: var(--text);
+  }
+
+  /* ─── RACHAS ─── */
+  .racha-list { padding: 4px 0; }
+  .racha-row {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--bg2);
+  }
+  .racha-row:last-child { border-bottom: none; }
+  .racha-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 7px;
+  }
+  .racha-name { font-size: 13px; color: var(--text); }
+  .racha-time {
+    font-size: 12px;
+    color: var(--racha);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .racha-bar-wrap {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .racha-bar {
+    height: 100%;
+    background: var(--racha);
+    border-radius: 2px;
+  }
+  .racha-sub {
+    font-size: 9px;
+    color: var(--text3);
+    margin-top: 5px;
+    letter-spacing: 0.06em;
+  }
+
+  /* ─── PROGRESS RINGS ─── */
+  .ring-svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--bg2); stroke-width: 3; }
+  .ring-fill { fill: none; stroke-width: 3; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease; }
+
+  /* ─── WEEKLY/MONTHLY/ANNUAL ─── */
+  .multi-habit {
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--bg2);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .multi-habit:last-child { border-bottom: none; }
+  .multi-habit-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+  }
+  .multi-habit-name { font-size: 13px; color: var(--text); }
+  .multi-habit-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .check-btn {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Inter', sans-serif;
+  }
+  .check-btn:hover {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+  .multi-count {
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .multi-dots {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+  .dot.filled { background: var(--accent); }
+  .dot.extra { background: var(--accent2); opacity: 0.5; }
+
+  /* ─── CATEGORY STATS MINI ─── */
+  .cat-stats { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .cat-stat-row { display: flex; align-items: center; gap: 10px; }
+  .cat-stat-name {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    width: 60px;
+    flex-shrink: 0;
+  }
+  .cat-stat-name.salud { color: var(--salud); }
+  .cat-stat-name.dinero { color: var(--dinero); }
+  .cat-stat-name.estudio { color: var(--estudio); }
+  .cat-stat-name.trabajo { color: var(--trabajo); }
+
+  .cat-track {
+    flex: 1;
+    height: 4px;
+    background: var(--bg2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .cat-fill {
+    height: 100%;
+    border-radius: 2px;
+  }
+  .cat-fill.salud { background: var(--salud); }
+  .cat-fill.dinero { background: var(--dinero); }
+  .cat-fill.estudio { background: var(--estudio); }
+  .cat-fill.trabajo { background: var(--trabajo); }
+
+  .cat-pct {
+    font-size: 10px;
+    color: var(--text3);
+    min-width: 28px;
+    text-align: right;
+  }
+
+  /* ─── CHARACTER CARD ─── */
+  .char-card-inner {
+    padding: 20px 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .char-avatar {
+    font-size: 40px;
+    line-height: 1;
+    position: relative;
+  }
+  .char-level-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -8px;
+    background: var(--text);
+    color: var(--bg);
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    letter-spacing: 0.08em;
+  }
+  .char-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 16px;
+    color: var(--text);
+  }
+  .char-bars-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+  }
+  .char-bar-item { display: flex; flex-direction: column; gap: 4px; }
+  .char-bar-label { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .char-bar-label.salud { color: var(--salud); }
+  .char-bar-label.dinero { color: var(--dinero); }
+  .char-bar-label.estudio { color: var(--estudio); }
+  .char-bar-label.trabajo { color: var(--trabajo); }
+  .char-track { height: 5px; background: var(--bg2); border-radius: 3px; overflow: hidden; }
+  .char-fill { height: 100%; border-radius: 3px; }
+  .char-fill.salud { background: var(--salud); width: 68%; }
+  .char-fill.dinero { background: var(--dinero); width: 45%; }
+  .char-fill.estudio { background: var(--estudio); width: 80%; }
+  .char-fill.trabajo { background: var(--trabajo); width: 55%; }
+  .char-xp {
+    font-size: 10px;
+    color: var(--text3);
+    text-align: center;
+  }
+
+  /* ─── DIVIDER ─── */
+  .section-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+
+  /* ─── SCROLLABLE PANEL ─── */
+  .panel-scroll { max-height: 340px; overflow-y: auto; }
+  .panel-scroll::-webkit-scrollbar { width: 3px; }
+  .panel-scroll::-webkit-scrollbar-track { background: transparent; }
+  .panel-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ─── ADD BUTTON ─── */
+  .add-row {
+    padding: 10px 18px;
+    border-top: 1px solid var(--bg2);
+    display: flex;
+    justify-content: center;
+  }
+  .add-btn {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    background: none;
+    border: 1px dashed var(--border);
+    padding: 6px 18px;
+    cursor: pointer;
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+  .add-btn:hover { color: var(--text2); border-color: var(--text2); }
+
+  .ghost-btn {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    background: transparent;
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+
+  .ghost-btn:hover {
+    color: var(--text);
+    border-color: var(--text2);
+  }
+
+  .danger-btn {
+    color: #9d3a21;
+    border-color: #d7b0a3;
+  }
+
+  .details-edit {
+    border-top: 1px solid var(--bg2);
+    padding: 0 18px 16px;
+  }
+
+  details > summary {
+    list-style: none;
+  }
+
+  details > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .inline-forms,
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+  }
+
+  .details-edit form,
+  .composer-body form {
+    margin-top: 14px;
+  }
+
+  .field,
+  .field textarea,
+  .field select,
+  .field input {
+    width: 100%;
+  }
+
+  .field label {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text);
+    padding: 9px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+  }
+
+  .field textarea {
+    resize: vertical;
+    min-height: 68px;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .primary-btn {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 8px 12px;
+    border: 1px solid var(--text);
+    border-radius: 2px;
+    background: var(--text);
+    color: #081018;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+
+  .primary-btn:hover {
+    opacity: 0.92;
+  }
+
+  .primary-btn[disabled],
+  .check-btn[disabled],
+  .ghost-btn[disabled] {
+    opacity: 0.65;
+    cursor: wait;
+  }
+
+  .composer {
+    border-top: 1px solid var(--bg2);
+  }
+
+  .composer summary {
+    padding: 10px 18px;
+  }
+
+  .composer summary .add-btn {
+    display: block;
+  }
+
+  .composer-body {
+    padding: 0 18px 16px;
+  }
+
+  .tab-panel {
+    display: none;
+  }
+
+  .tab-panel.active {
+    display: block;
+  }
+
+  .toolbar-note {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── TAG ─── */
+  .tag-new {
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    background: var(--racha-bg);
+    color: var(--racha);
+    border: 1px solid #E8C4A8;
+    padding: 1px 6px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  .empty-state {
+    padding: 24px 18px;
+    text-align: center;
+    color: var(--text3);
+    font-size: 12px;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 768px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .header { align-items: flex-start; gap: 16px; flex-direction: column; }
+    .year-progress { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .stats-row .stat-item:nth-child(2) { border-right: none; }
+    .stats-row .stat-item:nth-child(3) { border-top: 1px solid var(--border); }
+    .stats-row .stat-item:nth-child(4) { border-top: 1px solid var(--border); }
+    .multi-habit-top,
+    .habit-row {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .habit-main,
+    .habit-side,
+    .habit-tools {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- QUOTE BANNER -->
+<div class="quote-banner">
+  <div id="quote-text">"{{ quote }}"</div>
+  <div class="quote-author" id="quote-author">{% if quote_author %}— {{ quote_author }} &nbsp;·&nbsp; {% endif %}{{ banner_date }}</div>
+  <div class="quote-actions">
+    <button class="quote-btn" type="button" id="next-quote-btn">Siguiente frase</button>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1>Topuria</h1>
+      <div class="date">{{ header_date }}</div>
     </div>
-  </body>
-</html>
 
+    <!-- CHARACTER MINI -->
+    <div style="display:flex; gap:16px; align-items:flex-end;">
+      <div style="text-align:right;">
+        <div style="font-family:'DM Serif Display',serif; font-size:15px;">{{ character.name }}</div>
+        <div style="font-size:9px; color:var(--text3); letter-spacing:0.1em; text-transform:uppercase; margin-top:2px;">Nivel {{ character.level }} · {{ character.xp }} XP</div>
+      </div>
+      <div style="font-size:30px; position:relative; line-height:1;">
+        {{ character.avatar }}
+        <div style="position:absolute;bottom:-4px;right:-6px;background:var(--text);color:var(--bg);font-size:8px;padding:1px 4px;border-radius:2px;font-family:'Inter',sans-serif;">LVL{{ character.level }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS ROW -->
+  <div class="card year-progress">
+    <div class="year-progress-block">
+      <div class="year-progress-top">
+        <div>
+          <div class="year-progress-kicker">Ritmo anual</div>
+          <div class="year-progress-title">Semana del año</div>
+        </div>
+        <div class="year-progress-chip">{{ year_progress.week_percentage }}%</div>
+      </div>
+      <div class="year-progress-value">{{ year_progress.week_of_year }}<span>de {{ year_progress.weeks_in_year }}</span></div>
+      <div class="year-progress-track">
+        <div class="year-progress-fill week" style="width:{{ year_progress.week_percentage }}%;"></div>
+      </div>
+      <div class="year-progress-meta">
+        <div class="year-progress-sub">Ya pasaste {{ year_progress.week_of_year }} semanas de este año.</div>
+        <div>{{ year_progress.week_percentage }}% recorrido</div>
+      </div>
+    </div>
+    <div class="year-progress-block">
+      <div class="year-progress-top">
+        <div>
+          <div class="year-progress-kicker">Paso diario</div>
+          <div class="year-progress-title">Día del año</div>
+        </div>
+        <div class="year-progress-chip">{{ year_progress.day_percentage }}%</div>
+      </div>
+      <div class="year-progress-value">{{ year_progress.day_of_year }}<span>de {{ year_progress.days_in_year }}</span></div>
+      <div class="year-progress-track">
+        <div class="year-progress-fill day" style="width:{{ year_progress.day_percentage }}%;"></div>
+      </div>
+      <div class="year-progress-meta">
+        <div class="year-progress-sub">Cada día suma: hoy estás parado en el {{ year_progress.day_of_year }}.</div>
+        <div>{{ year_progress.day_percentage }}% recorrido</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-row" style="margin-bottom:20px;">
+    {% for stat in stats %}
+    <div class="stat-item">
+      <div class="stat-label">{{ stat.label }}</div>
+      <div class="stat-value">{{ stat.value }}<span style="font-size:16px;color:var(--text3);">/{{ stat.total }}</span></div>
+      <svg class="stat-ring" viewBox="0 0 36 36">
+        <circle class="ring-bg" cx="18" cy="18" r="15" />
+        <circle class="ring-fill" cx="18" cy="18" r="15"
+          stroke="var(--{{ stat.stroke }})"
+          stroke-dasharray="94.2"
+          stroke-dashoffset="{{ stat.dash_offset }}"
+          style="transform-origin:center; transform:rotate(-90deg);"/>
+      </svg>
+      <div class="stat-sub">{{ stat.sub_label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+    <div class="left-col">
+
+      <!-- DAILY HABITS -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Hábitos diarios</div>
+          <div class="card-meta">{{ stats[0].value }} / {{ stats[0].total }} hoy</div>
+        </div>
+        <div class="habits-list panel-scroll">
+          {% if daily_habits %}
+            {% for habit in daily_habits %}
+            <div class="habit-row {% if habit.done_today %}done{% endif %}">
+              <div class="habit-main">
+                <div class="habit-check">
+                  <form method="post" action="/checks/daily-toggle" data-submit-state>
+                    <input type="hidden" name="habit_id" value="{{ habit.id }}">
+                    <input type="hidden" name="redirect_tab_name" value="weekly">
+                    <button type="submit" aria-label="Marcar hábito">{% if habit.done_today %}✓{% else %}+{% endif %}</button>
+                  </form>
+                </div>
+                <div class="habit-name">{{ habit.name }}</div>
+              </div>
+              <div class="habit-side">
+                <div class="habit-cat cat-{{ habit.category_slug }}">{{ habit.category_label|lower }}</div>
+                <details>
+                  <summary class="ghost-btn">Editar</summary>
+                  <div class="details-edit">
+                    <form method="post" action="/habits/{{ habit.id }}/update">
+                      <div class="form-grid">
+                        <div class="field">
+                          <label>Nombre</label>
+                          <input type="text" name="name" value="{{ habit.name }}" required>
+                        </div>
+                        <div class="field">
+                          <label>Categoría</label>
+                          <select name="category">
+                            <option value="Salud" {% if habit.category_label == 'Salud' %}selected{% endif %}>Salud</option>
+                            <option value="Dinero" {% if habit.category_label == 'Dinero' %}selected{% endif %}>Dinero</option>
+                            <option value="Estudio" {% if habit.category_label == 'Estudio' %}selected{% endif %}>Estudio</option>
+                            <option value="Trabajo" {% if habit.category_label == 'Trabajo' %}selected{% endif %}>Trabajo</option>
+                          </select>
+                        </div>
+                        <div class="field" style="grid-column:1 / -1;">
+                          <label>Objetivo descriptivo</label>
+                          <input type="text" name="goal" value="{{ habit.goal or '' }}" placeholder="Opcional">
+                        </div>
+                      </div>
+                      <input type="hidden" name="cadence" value="daily">
+                      <input type="hidden" name="redirect_tab_name" value="weekly">
+                      <div class="form-actions">
+                        <button class="primary-btn" type="submit">Guardar</button>
+                      </div>
+                    </form>
+                    <form method="post" action="/habits/{{ habit.id }}/delete">
+                      <input type="hidden" name="redirect_tab_name" value="weekly">
+                      <div class="form-actions">
+                        <button class="ghost-btn danger-btn" type="submit">Eliminar hábito</button>
+                      </div>
+                    </form>
+                  </div>
+                </details>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">Todavía no hay hábitos diarios. Creá el primero desde abajo.</div>
+          {% endif %}
+        </div>
+        <details class="composer">
+          <summary><span class="add-btn">+ nuevo hábito diario</span></summary>
+          <div class="composer-body">
+            <form method="post" action="/habits/create" data-submit-state>
+              <div class="form-grid">
+                <div class="field">
+                  <label>Nombre</label>
+                  <input type="text" name="name" required placeholder="Ej. Medité 10 min">
+                </div>
+                <div class="field">
+                  <label>Categoría</label>
+                  <select name="category">
+                    <option value="Salud">Salud</option>
+                    <option value="Dinero">Dinero</option>
+                    <option value="Estudio">Estudio</option>
+                    <option value="Trabajo">Trabajo</option>
+                  </select>
+                </div>
+                <div class="field" style="grid-column:1 / -1;">
+                  <label>Objetivo descriptivo</label>
+                  <input type="text" name="goal" placeholder="Opcional">
+                </div>
+              </div>
+              <input type="hidden" name="cadence" value="daily">
+              <input type="hidden" name="redirect_tab_name" value="weekly">
+              <div class="form-actions">
+                <button class="primary-btn" type="submit">Agregar hábito</button>
+              </div>
+            </form>
+          </div>
+        </details>
+      </div>
+
+      <!-- RACHAS -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Rachas activas</div>
+          <div class="card-meta">{{ streaks|length }} activas</div>
+        </div>
+        <div class="racha-list">
+          {% if streaks %}
+            {% for streak in streaks %}
+            <div class="racha-row">
+              <div class="racha-header">
+                <div class="racha-name">{{ streak.name }}</div>
+                <div class="racha-time" data-streak-start="{{ streak.current_iso }}">{{ streak.current_text }}</div>
+              </div>
+              <div class="racha-bar-wrap">
+                <div class="racha-bar" style="width:{{ streak.progress_pct }}%;"></div>
+              </div>
+              <div class="racha-sub">{{ streak.record_text }} · {{ streak.target_label }}</div>
+              <details style="margin-top:10px;">
+                <summary class="ghost-btn">Gestionar</summary>
+                <div class="details-edit">
+                  <form method="post" action="/habits/{{ streak.id }}/update">
+                    <div class="form-grid">
+                      <div class="field">
+                        <label>Nombre</label>
+                        <input type="text" name="name" value="{{ streak.name }}" required>
+                      </div>
+                      <div class="field">
+                        <label>Categoría</label>
+                        <select name="category">
+                          <option value="Salud" {% if streak.category_label == 'Salud' %}selected{% endif %}>Salud</option>
+                          <option value="Dinero" {% if streak.category_label == 'Dinero' %}selected{% endif %}>Dinero</option>
+                          <option value="Estudio" {% if streak.category_label == 'Estudio' %}selected{% endif %}>Estudio</option>
+                          <option value="Trabajo" {% if streak.category_label == 'Trabajo' %}selected{% endif %}>Trabajo</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label>Objetivo en días</label>
+                        <input type="number" min="1" name="target_count" value="{{ streak.target_days }}" required>
+                      </div>
+                      <div class="field">
+                        <label>Inicio</label>
+                        <input type="datetime-local" name="started_at_text" value="{{ streak.current_iso[:16] }}">
+                      </div>
+                    </div>
+                    <input type="hidden" name="redirect_tab_name" value="weekly">
+                    <div class="form-actions">
+                      <button class="primary-btn" type="submit">Guardar cambios</button>
+                    </div>
+                  </form>
+                  <form method="post" action="/checks/streak-reset">
+                    <input type="hidden" name="habit_id" value="{{ streak.id }}">
+                    <input type="hidden" name="redirect_tab_name" value="weekly">
+                    <div class="form-actions">
+                      <button class="ghost-btn" type="submit">Reiniciar racha</button>
+                    </div>
+                  </form>
+                </div>
+              </details>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">No hay rachas activas todavía.</div>
+          {% endif %}
+        </div>
+        <details class="composer">
+          <summary><span class="add-btn">+ nueva racha</span></summary>
+          <div class="composer-body">
+            <form method="post" action="/habits/create" data-submit-state>
+              <div class="form-grid">
+                <div class="field">
+                  <label>Nombre</label>
+                  <input type="text" name="name" required placeholder="Ej. Sin alcohol">
+                </div>
+                <div class="field">
+                  <label>Categoría</label>
+                  <select name="category">
+                    <option value="Salud">Salud</option>
+                    <option value="Dinero">Dinero</option>
+                    <option value="Estudio">Estudio</option>
+                    <option value="Trabajo">Trabajo</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Objetivo en días</label>
+                  <input type="number" name="target_count" min="1" value="7" required>
+                </div>
+                <div class="field">
+                  <label>Inicio</label>
+                  <input type="datetime-local" name="started_at_text">
+                </div>
+                <div class="field" style="grid-column:1 / -1;">
+                  <label>Nota u objetivo</label>
+                  <input type="text" name="goal" placeholder="Opcional">
+                </div>
+              </div>
+              <input type="hidden" name="habit_kind" value="avoid">
+              <input type="hidden" name="cadence" value="streak">
+              <input type="hidden" name="redirect_tab_name" value="weekly">
+              <div class="form-actions">
+                <button class="primary-btn" type="submit">Crear racha</button>
+              </div>
+            </form>
+          </div>
+        </details>
+      </div>
+
+      <!-- WEEKLY / MONTHLY / ANNUAL TABS -->
+      <div class="card">
+        <div class="tabs">
+          {% for tab_key, tab_label in tab_labels.items() %}
+          <a class="tab {% if active_tab == tab_key %}active{% endif %}" href="/?tab={{ tab_key }}">{{ tab_label }}</a>
+          {% endfor %}
+        </div>
+
+        {% for panel_key, tab_label in tab_labels.items() %}
+        <div class="tab-panel {% if active_tab == panel_key %}active{% endif %}">
+          <div class="habits-list">
+            {% if panel_habits[panel_key] %}
+              {% for habit in panel_habits[panel_key] %}
+              <div class="multi-habit">
+                <div class="multi-habit-top">
+                  <div>
+                    <div class="multi-habit-name">{{ habit.name }}</div>
+                    <div style="font-size:10px;color:var(--text3);margin-top:2px;">{{ habit.frequency_label }}</div>
+                  </div>
+                  <div class="multi-habit-actions">
+                    <span class="habit-cat cat-{{ habit.category_slug }}" style="margin-right:4px;">{{ habit.category_label|lower }}</span>
+                    <span class="multi-count">{{ habit.current_count }}/{{ habit.target_count }}</span>
+                    <form method="post" action="/checks/increment" data-submit-state>
+                      <input type="hidden" name="habit_id" value="{{ habit.id }}">
+                      <input type="hidden" name="redirect_tab_name" value="{{ panel_key }}">
+                      <button class="check-btn" type="submit">✓ check</button>
+                    </form>
+                    <details>
+                      <summary class="ghost-btn">Editar</summary>
+                      <div class="details-edit">
+                        <form method="post" action="/habits/{{ habit.id }}/update">
+                          <div class="form-grid">
+                            <div class="field">
+                              <label>Nombre</label>
+                              <input type="text" name="name" value="{{ habit.name }}" required>
+                            </div>
+                            <div class="field">
+                              <label>Categoría</label>
+                              <select name="category">
+                                <option value="Salud" {% if habit.category_label == 'Salud' %}selected{% endif %}>Salud</option>
+                                <option value="Dinero" {% if habit.category_label == 'Dinero' %}selected{% endif %}>Dinero</option>
+                                <option value="Estudio" {% if habit.category_label == 'Estudio' %}selected{% endif %}>Estudio</option>
+                                <option value="Trabajo" {% if habit.category_label == 'Trabajo' %}selected{% endif %}>Trabajo</option>
+                              </select>
+                            </div>
+                            <div class="field">
+                              <label>Meta</label>
+                              <input type="number" min="1" name="target_count" value="{{ habit.target_count }}" required>
+                            </div>
+                            <div class="field" style="grid-column:1 / -1;">
+                              <label>Objetivo descriptivo</label>
+                              <input type="text" name="goal" value="{{ habit.goal or '' }}" placeholder="Opcional">
+                            </div>
+                          </div>
+                          <input type="hidden" name="cadence" value="{{ panel_key }}">
+                          <input type="hidden" name="redirect_tab_name" value="{{ panel_key }}">
+                          <div class="form-actions">
+                            <button class="primary-btn" type="submit">Guardar</button>
+                          </div>
+                        </form>
+                        <form method="post" action="/habits/{{ habit.id }}/delete">
+                          <input type="hidden" name="redirect_tab_name" value="{{ panel_key }}">
+                          <div class="form-actions">
+                            <button class="ghost-btn danger-btn" type="submit">Eliminar hábito</button>
+                          </div>
+                        </form>
+                      </div>
+                    </details>
+                  </div>
+                </div>
+                <div class="multi-dots">
+                  {% for dot in habit.dots %}
+                  <div class="dot {% if dot != 'empty' %}{{ dot }}{% endif %}"></div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state">No hay hábitos {{ tab_label|lower }}es cargados.</div>
+            {% endif %}
+          </div>
+          <details class="composer">
+            <summary><span class="add-btn">+ nuevo hábito {{ tab_label|lower }}</span></summary>
+            <div class="composer-body">
+              <form method="post" action="/habits/create" data-submit-state>
+                <div class="form-grid">
+                  <div class="field">
+                    <label>Nombre</label>
+                    <input type="text" name="name" required>
+                  </div>
+                  <div class="field">
+                    <label>Categoría</label>
+                    <select name="category">
+                      <option value="Salud">Salud</option>
+                      <option value="Dinero">Dinero</option>
+                      <option value="Estudio">Estudio</option>
+                      <option value="Trabajo">Trabajo</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>Meta del período</label>
+                    <input type="number" name="target_count" min="1" value="{% if panel_key == 'weekly' %}3{% elif panel_key == 'monthly' %}4{% else %}12{% endif %}" required>
+                  </div>
+                  <div class="field" style="grid-column:1 / -1;">
+                    <label>Objetivo descriptivo</label>
+                    <input type="text" name="goal" placeholder="Opcional">
+                  </div>
+                </div>
+                <input type="hidden" name="cadence" value="{{ panel_key }}">
+                <input type="hidden" name="redirect_tab_name" value="{{ panel_key }}">
+                <div class="form-actions">
+                  <button class="primary-btn" type="submit">Agregar hábito</button>
+                </div>
+              </form>
+            </div>
+          </details>
+        </div>
+        {% endfor %}
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
+
+      <!-- CHARACTER CARD -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Personaje</div>
+          <div class="card-meta">Lv {{ character.level }}</div>
+        </div>
+        <div class="char-card-inner">
+          <div class="char-avatar">
+            {{ character.avatar }}
+            <div class="char-level-badge">LVL {{ character.level }}</div>
+          </div>
+          <div class="char-name">{{ character.name }}</div>
+          <div style="font-size:10px; color:var(--text3); text-align:center; line-height:1.6;">
+            {{ character.xp_into_level }} / {{ character.xp_needed }} XP para nivel {{ character.level + 1 }}
+          </div>
+          <div style="width:100%; height:4px; background:var(--bg2); border-radius:2px; overflow:hidden;">
+            <div style="width:{{ character.xp_pct }}%; height:100%; background:var(--text); border-radius:2px;"></div>
+          </div>
+
+          <div class="char-bars-grid" style="margin-top:4px;">
+            {% for attr in character.attributes %}
+            <div class="char-bar-item">
+              <div class="char-bar-label {{ attr.slug }}">{{ attr.label }}</div>
+              <div class="char-track"><div class="char-fill {{ attr.slug }}" style="width:{{ attr.fill }}%;"></div></div>
+              <div style="font-size:9px;color:var(--text3);">{{ attr.score }} pts</div>
+            </div>
+            {% endfor %}
+          </div>
+          <div style="font-size:9px;color:var(--text3);text-align:center;line-height:1.8;border-top:1px solid var(--border);padding-top:12px;width:100%;">
+            Completar hábitos de hoy<br>
+            <span style="color:var(--text2);">+{{ character.available_today }} XP disponibles</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CATEGORY PROGRESS -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Progreso por categoría</div>
+          <div class="card-meta">este mes</div>
+        </div>
+        <div class="cat-stats">
+          {% for row in category_progress %}
+          <div class="cat-stat-row">
+            <div class="cat-stat-name {{ row.slug }}">{{ row.label }}</div>
+            <div class="cat-track"><div class="cat-fill {{ row.slug }}" style="width:{{ row.percentage }}%;"></div></div>
+            <div class="cat-pct">{{ row.percentage }}%</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- ANNUAL HIGHLIGHTS -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Objetivos anuales</div>
+          <div class="card-meta">{{ today_iso[:4] }}</div>
+        </div>
+        <div class="habits-list">
+          {% if annual_goals %}
+            {% for habit in annual_goals %}
+            <div class="multi-habit">
+              <div class="multi-habit-top">
+                <div>
+                  <div class="multi-habit-name">{{ habit.name }}</div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:2px;">Meta: {{ habit.target_count }} {% if habit.target_count == 1 %}objetivo{% else %}objetivos{% endif %}</div>
+                </div>
+                <div class="multi-habit-actions">
+                  <span class="habit-cat cat-{{ habit.category_slug }}" style="margin-right:4px;">{{ habit.category_label|lower }}</span>
+                  <span class="multi-count">{{ habit.current_count }}/{{ habit.target_count }}</span>
+                  <form method="post" action="/checks/increment" data-submit-state>
+                    <input type="hidden" name="habit_id" value="{{ habit.id }}">
+                    <input type="hidden" name="redirect_tab_name" value="yearly">
+                    <button class="check-btn" type="submit">✓ check</button>
+                  </form>
+                </div>
+              </div>
+              <div class="multi-dots">
+                {% for dot in habit.dots %}
+                <div class="dot {% if dot != 'empty' %}{{ dot }}{% endif %}"></div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">Todavía no hay objetivos anuales.</div>
+          {% endif %}
+        </div>
+        <div class="add-row">
+          <a class="add-btn" href="/?tab=yearly" style="text-align:center; text-decoration:none; display:block;">ver y gestionar objetivos anuales</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  const quoteEntries = [
+    {% for entry in quote_entries %}
+    { text: {{ entry.text|tojson }}, author: {{ entry.author|tojson }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ];
+  let quoteIndex = {{ quote_index }};
+
+  document.querySelectorAll('form[data-submit-state]').forEach((form) => {
+    form.addEventListener('submit', () => {
+      const button = form.querySelector('button[type="submit"]');
+      if (!button) return;
+      button.dataset.originalLabel = button.textContent;
+      button.disabled = true;
+      if (button.classList.contains('primary-btn')) {
+        button.textContent = 'Guardando...';
+      }
+    });
+  });
+
+  function formatDelta(startIso) {
+    const start = new Date(startIso);
+    const now = new Date();
+    const deltaMs = Math.max(now - start, 0);
+    const totalMinutes = Math.floor(deltaMs / 60000);
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutes = totalMinutes % 60;
+    return `${days}d ${hours}h ${minutes}m`;
+  }
+
+  function renderQuote() {
+    const quote = quoteEntries[quoteIndex];
+    const textNode = document.getElementById('quote-text');
+    const authorNode = document.getElementById('quote-author');
+    textNode.textContent = `"${quote.text}"`;
+    authorNode.textContent = quote.author ? `— ${quote.author} · {{ banner_date }}` : '{{ banner_date }}';
+  }
+
+  document.getElementById('next-quote-btn').addEventListener('click', () => {
+    quoteIndex = (quoteIndex + 1) % quoteEntries.length;
+    renderQuote();
+  });
+
+  function tickStreaks() {
+    document.querySelectorAll('[data-streak-start]').forEach((node) => {
+      node.textContent = formatDelta(node.dataset.streakStart);
+    });
+  }
+
+  tickStreaks();
+  window.setInterval(tickStreaks, 60000);
+</script>
+
+</body>
+</html>
